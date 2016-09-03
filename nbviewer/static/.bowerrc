@@ -1,1 +1,8 @@
-{"directory": "components"}
+{
+  "directory": "components",
+  "registry" : "<bower mirror>",
+  "ca": "<ca path>",
+  "resolvers" : [
+    "<bower mirror resolver>"
+  ]
+}

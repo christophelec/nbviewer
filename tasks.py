@@ -10,6 +10,7 @@ import shutil
 import tempfile
 import sys
 import tarfile
+import pip
 
 try:
     from urllib.request import urlretrieve
@@ -45,10 +46,9 @@ def notebook_static(ctx):
         return
     fname = 'notebook-%s.tar.gz' % NOTEBOOK_VERSION
     nb_tgz = os.path.join(APP_ROOT, fname)
-    nb_url = 'https://pypi.python.org/packages/source/n/notebook/' + fname
     if not os.path.exists(nb_tgz):
-        print("Downloading %s -> %s" % (nb_url, nb_tgz))
-        urlretrieve(nb_url, nb_tgz)
+        print("Downloading from pypi -> %s" % (nb_tgz))
+        pip.main(['download', 'notebook=={}'.format(NOTEBOOK_VERSION), '--no-deps', '-d', '.', '--no-binary', ':all:'])
     with open(nb_tgz, 'rb') as f:
         checksum = hashlib.sha256(f.read()).hexdigest()
     if checksum != NOTEBOOK_CHECKSUM:

@@ -1,33 +1,12 @@
-# Using the Ubuntu image
-FROM debian:jessie
+FROM <Redhat image with python3 installed and configured to hit a mirror to pypi>
 
-MAINTAINER Project Jupyter <jupyter@googlegroups.com>
+RUN yum update -y && yum distribution-synchronization -y
+RUN yum install -y sqlite libmemcached-devel libcurl-devel rh-nodejs4-npm git
 
-ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update \
-  && apt-get install -y -q \
-    build-essential \
-    gcc \
-    git \
-    libcurl4-openssl-dev \
-    libmemcached-dev \
-    libsqlite3-dev \
-    libzmq3-dev \
-    make \
-    nodejs \
-    nodejs-legacy \
-    npm \
-    pandoc \
-    python3-dev \
-    python3-pip \
-    sqlite3 \
-    zlib1g-dev \
-  && apt-get clean \
-  && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
-  && pip3 install --upgrade setuptools pip \
-  && hash -r \
-  && pip3 install --no-cache-dir invoke
-
+# This is to be able to launch node as scl enable does not work with docker.
+# CF : http://developers.redhat.com/products/softwarecollections/get-started-rhel7-nodejs/
+ENV PATH /opt/rh/rh-nodejs4/root/usr/bin/:${PATH}
+ENV LD_LIBRARY_PATH /opt/rh/rh-nodejs4/root/usr/lib64/
 
 # To change the number of threads use
 # docker run -d -e NBVIEWER_THREADS=4 -p 80:8080 nbviewer
@@ -38,27 +17,29 @@ WORKDIR /srv/nbviewer
 
 # asset toolchain
 ADD ./package.json /srv/nbviewer/
+
+# Adds npmrc to resolve to custom mirror
+ADD ./.npmrc /root/
 RUN npm install .
 
-# python requirements
+# Python requirements
 ADD ./requirements.txt /srv/nbviewer/
-# get reduced validation tracebacks from unreleased nbformat-4.1
-RUN pip3 install --no-cache-dir -r requirements.txt && \
-    pip3 install --no-cache-dir -e git+https://github.com/jupyter/nbformat#egg=nbformat && \
-    pip3 freeze
+# Get reduced validation tracebacks from unreleased nbformat-4.1
+RUN pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir -e git://<path to nbformat repo>/nbformat#egg=nbformat && \
+    pip freeze
 
-# tasks will likely require re-running everything
+
+# Tasks will likely require re-running everything
 ADD ./tasks.py /srv/nbviewer/
 
-# front-end dependencies
+# Front-end dependencies
 ADD ["./nbviewer/static/bower.json", "./nbviewer/static/.bowerrc", \
      "/srv/nbviewer/nbviewer/static/"]
 
 # RUN invoke bower
 WORKDIR /srv/nbviewer/nbviewer/static
-RUN ../../node_modules/.bin/bower install \
-  --allow-root \
-  --config.interactive=false
+RUN ../../node_modules/.bin/bower install --allow-root --config.interactive=false
 
 WORKDIR /srv/nbviewer
 
@@ -69,4 +50,4 @@ RUN invoke less
 # root up until now!
 USER nobody
 
-CMD ["python3", "-m", "nbviewer", "--port=8080"]
+CMD ["python", "-m", "nbviewer", "--port=8080"]
